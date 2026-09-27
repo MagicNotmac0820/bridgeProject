@@ -8,3 +8,12 @@ dist/
 data/
 runs/
 *.sqlite3
+*.pdf
+*.jsonl
+RAG_Architecture_Plan.md
+E2E_TESTING_GUIDE.md
+DEMO_GUIDE.md
+
+# RAG 知識庫的原始與切塊資料要進版控:舊版本必須能用同一批資料重建索引
+!bridge-rag/knowledge/raw/*.pdf
+!bridge-rag/knowledge/parsed/*.jsonl

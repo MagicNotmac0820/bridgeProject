@@ -18,8 +18,33 @@ cd bridge-rag
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements-dev.txt
+cp .env.example .env          # 再依需要修改模型與金鑰
 python -m pytest
 ```
+
+測試不需要 Ollama 或任何 API 金鑰,嵌入與 LLM 都換成假的。
+
+## 知識庫與向量庫
+
+```
+knowledge/raw/*.pdf        原始文件(進版控)
+knowledge/parsed/*.jsonl   切塊結果,v1 實際使用的資料(進版控)
+knowledge/chroma_db/       向量庫,可以隨時重建(不進版控)
+```
+
+每個版本、每個嵌入模型各用一個 collection,名稱像 `v1-ollama-nomic-embed-text`,
+建庫用的模型記在 collection 的 metadata。換 `RAG_EMBED_MODEL` 會建一個新的
+collection,不會動到舊的;讀到的 collection 模型對不上時,v1 啟動就直接失敗,
+不會默默檢索到錯的東西。
+
+v1 啟動時發現 collection 不存在會自動建立。也可以先手動建好:
+
+```
+python -m knowledge.ingest                  切塊檔不存在才解析 PDF,再建 v1 的向量庫
+python -m knowledge.ingest --reparse        強制重新解析 PDF,會覆蓋 parsed/*.jsonl
+```
+
+`--reparse` 會改掉 v1 用的資料,新的切塊方式請搭配新版本與新的檔名使用。
 
 ## 啟動
 
@@ -83,6 +108,12 @@ rag_service.py     HTTP 外殼,所有版本共用。只負責收發與合法性�
 versions/
   __init__.py      依名稱載入版本
   v0.py            骨架:永遠 pass,出第一張合法牌。新版本從這裡複製
-knowledge/         知識庫原始資料
+  v1.py            混合檢索(ChromaDB 向量 + BM25,RRF 合併)+ LLM
+  common.py        共用:手牌特徵、叫牌序列、合約、當前墩的文字描述
+  llm.py           共用:透過 LiteLLM 呼叫 LLM 與嵌入模型,模型由 .env 決定
+knowledge/
+  ingest.py        PDF 解析、切塊、寫入向量庫
+  raw/  parsed/    知識庫資料,見「知識庫與向量庫」
+.env.example       模型設定範本,複製成 .env 使用
 tests/
 ```
